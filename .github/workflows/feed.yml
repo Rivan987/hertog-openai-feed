@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -20,6 +20,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # GitHub zet geplande taken in openbare repo's uit na 60 dagen zonder activiteit.
+      # Is de laatste wijziging 45+ dagen oud, dan maakt deze stap een lege "commit".
+      - name: Repository actief houden
+        run: |
+          last=$(git log -1 --format=%ct)
+          days=$(( ( $(date +%s) - last ) / 86400 ))
+          if [ "$days" -ge 45 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Keepalive: automatische taak actief houden"
+            git push
+          else
+            echo "Laatste activiteit $days dagen geleden, keepalive niet nodig."
+          fi
 
       - uses: actions/setup-python@v5
         with:
