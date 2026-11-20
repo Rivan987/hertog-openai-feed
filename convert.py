@@ -31,6 +31,8 @@ BRAND_FALLBACK = os.environ.get("BRAND_FALLBACK", "Den Hertog")
 # false = uitverkochte producten helemaal weglaten
 KEEP_OUT_OF_STOCK = os.environ.get("KEEP_OUT_OF_STOCK", "true").lower() == "true"
 MIN_PRODUCTS = int(os.environ.get("MIN_PRODUCTS", "1000"))
+# Producten onder deze prijs (in euro) worden niet geadverteerd (is_ads_eligible=false).
+MIN_PRICE = float(os.environ.get("MIN_PRICE", "10"))
 
 NS_G = "http://base.google.com/ns/1.0"
 NS_ATOM = "http://www.w3.org/2005/Atom"
@@ -172,7 +174,10 @@ def convert(source_path: str):
             url = "https://" + url[len("http://"):]
 
         eligible = availability in ("in_stock", "pre_order", "backorder")
-        if not eligible and not KEEP_OUT_OF_STOCK:
+        if eligible and float(price.split()[0]) < MIN_PRICE:
+            eligible = False
+            stats["onder minimumprijs"] += 1
+        if not eligible and not KEEP_OUT_OF_STOCK and availability == "out_of_stock":
             stats["uitverkocht weggelaten"] += 1
             continue
 
@@ -219,6 +224,7 @@ def write_report(rows, stats, issues, examples):
         f"  is_ads_eligible=true:  {stats['ads_eligible']}",
         f"  is_ads_eligible=false: {stats['niet_eligible']}",
         f"Uitverkocht weggelaten:  {stats['uitverkocht weggelaten']}",
+        f"Onder minimumprijs (EUR {MIN_PRICE:.2f}, niet geadverteerd): {stats['onder minimumprijs']}",
         "",
         "Meldingen:",
     ]
